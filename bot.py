@@ -5,10 +5,75 @@ import re
 from datetime import datetime, timedelta
 import json
 import os
+
 # ─── Configuration ───────────────────────────────────────────────────────────
 PREFIX = "+"
-import os
 BOT_TOKEN = os.getenv("TOKEN")
+
+# Rôles autorisés à utiliser le bot
+AUTHORIZED_ROLES = [
+    "✨ · Créateur",
+    "🌎 · Monde",
+    "🪄 · Origine",
+    "👑 · Couronne",
+    "🖥️ · Système",
+    "👑 · Crown",
+    "♦️ · Royal",
+    "💝 · Écho",
+    "❄️ · Froid",
+    "🌙 · Lune",
+    "🌟 · Aube",
+]
+
+# ─── Utilisateurs autorisés manuellement ─────────────────────────────────────
+AUTHORIZED_USERS_FILE = "authorized_users.json"
+
+def load_authorized_users():
+    if os.path.exists(AUTHORIZED_USERS_FILE):
+        with open(AUTHORIZED_USERS_FILE, "r") as f:
+            return json.load(f)
+    return {}
+
+def save_authorized_users(data):
+    with open(AUTHORIZED_USERS_FILE, "w") as f:
+        json.dump(data, f, indent=2)
+
+authorized_users = load_authorized_users()
+
+def is_user_authorized(guild_id, user_id):
+    return str(user_id) in authorized_users.get(str(guild_id), [])
+
+def add_authorized_user(guild_id, user_id):
+    gid = str(guild_id)
+    uid = str(user_id)
+    if gid not in authorized_users:
+        authorized_users[gid] = []
+    if uid not in authorized_users[gid]:
+        authorized_users[gid].append(uid)
+    save_authorized_users(authorized_users)
+
+def remove_authorized_user(guild_id, user_id):
+    gid = str(guild_id)
+    uid = str(user_id)
+    if gid in authorized_users and uid in authorized_users[gid]:
+        authorized_users[gid].remove(uid)
+    save_authorized_users(authorized_users)
+
+def has_authorized_role():
+    async def predicate(ctx):
+        if ctx.author == ctx.guild.owner:
+            return True
+        if is_user_authorized(ctx.guild.id, ctx.author.id):
+            return True
+        user_roles = [r.name for r in ctx.author.roles]
+        if any(role in user_roles for role in AUTHORIZED_ROLES):
+            return True
+        await ctx.send(embed=discord.Embed(
+            description="❌ Tu n'as pas la permission d'utiliser cette commande.",
+            color=0xFF4444
+        ), delete_after=5)
+        return False
+    return commands.check(predicate)
 
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix=PREFIX, intents=intents, help_command=None)
@@ -200,6 +265,7 @@ def parse_duration(duration_str):
 #  MODÉRATION
 # ════════════════════════════════════════════════════════════════════════════
 
+@has_authorized_role()
 @bot.command(name="kick")
 @commands.has_permissions(kick_members=True)
 async def kick(ctx, member: discord.Member, *, reason="Aucune raison fournie"):
@@ -214,6 +280,7 @@ async def kick(ctx, member: discord.Member, *, reason="Aucune raison fournie"):
         await ctx.send(embed=error_embed("❌ Je n'ai pas la permission de kick ce membre."))
 
 
+@has_authorized_role()
 @bot.command(name="ban")
 @commands.has_permissions(ban_members=True)
 async def ban(ctx, member: discord.Member, *, reason="Aucune raison fournie"):
@@ -228,6 +295,7 @@ async def ban(ctx, member: discord.Member, *, reason="Aucune raison fournie"):
         await ctx.send(embed=error_embed("❌ Je n'ai pas la permission de bannir ce membre."))
 
 
+@has_authorized_role()
 @bot.command(name="unban")
 @commands.has_permissions(ban_members=True)
 async def unban(ctx, user_id: int, *, reason="Aucune raison fournie"):
@@ -241,6 +309,7 @@ async def unban(ctx, user_id: int, *, reason="Aucune raison fournie"):
         await ctx.send(embed=error_embed("❌ Cet utilisateur n'est pas banni ou introuvable."))
 
 
+@has_authorized_role()
 @bot.command(name="mute")
 @commands.has_permissions(manage_roles=True)
 async def mute(ctx, member: discord.Member, *, reason="Aucune raison fournie"):
@@ -255,6 +324,7 @@ async def mute(ctx, member: discord.Member, *, reason="Aucune raison fournie"):
     await log_action(ctx.guild, "🔇 Mute", member, reason, ctx.author)
 
 
+@has_authorized_role()
 @bot.command(name="unmute")
 @commands.has_permissions(manage_roles=True)
 async def unmute(ctx, member: discord.Member):
@@ -271,6 +341,7 @@ async def unmute(ctx, member: discord.Member):
     await log_action(ctx.guild, "🔊 Unmute", member, moderator=ctx.author)
 
 
+@has_authorized_role()
 @bot.command(name="tempmute")
 @commands.has_permissions(manage_roles=True)
 async def tempmute(ctx, member: discord.Member, duration: str, *, reason="Aucune raison fournie"):
@@ -324,6 +395,7 @@ async def tempmute(ctx, member: discord.Member, duration: str, *, reason="Aucune
     tempmute_tasks[member.id] = task
 
 
+@has_authorized_role()
 @bot.command(name="warn")
 @commands.has_permissions(manage_messages=True)
 async def warn(ctx, member: discord.Member, *, reason="Aucune raison fournie"):
@@ -346,6 +418,7 @@ async def warn(ctx, member: discord.Member, *, reason="Aucune raison fournie"):
     await log_action(ctx.guild, "⚠️ Warn", member, reason, ctx.author)
 
 
+@has_authorized_role()
 @bot.command(name="warnings")
 @commands.has_permissions(manage_messages=True)
 async def warnings(ctx, member: discord.Member):
@@ -357,6 +430,7 @@ async def warnings(ctx, member: discord.Member):
     ))
 
 
+@has_authorized_role()
 @bot.command(name="clearwarns")
 @commands.has_permissions(manage_messages=True)
 async def clearwarns(ctx, member: discord.Member):
@@ -365,6 +439,7 @@ async def clearwarns(ctx, member: discord.Member):
     await ctx.send(embed=success_embed(f"✅ Avertissements de {member.mention} effacés."))
 
 
+@has_authorized_role()
 @bot.command(name="purge")
 @commands.has_permissions(manage_messages=True)
 async def purge(ctx, amount: int):
@@ -380,6 +455,7 @@ async def purge(ctx, amount: int):
 #  GESTION DES RÔLES
 # ════════════════════════════════════════════════════════════════════════════
 
+@has_authorized_role()
 @bot.command(name="addrole")
 @commands.has_permissions(manage_roles=True)
 async def addrole(ctx, member: discord.Member, role: discord.Role):
@@ -393,6 +469,7 @@ async def addrole(ctx, member: discord.Member, role: discord.Role):
     await log_action(ctx.guild, "🎭 Ajout de rôle", member, f"Rôle : {role.name}", ctx.author)
 
 
+@has_authorized_role()
 @bot.command(name="removerole")
 @commands.has_permissions(manage_roles=True)
 async def removerole(ctx, member: discord.Member, role: discord.Role):
@@ -404,6 +481,7 @@ async def removerole(ctx, member: discord.Member, role: discord.Role):
     await log_action(ctx.guild, "🎭 Suppression de rôle", member, f"Rôle : {role.name}", ctx.author)
 
 
+@has_authorized_role()
 @bot.command(name="roles")
 async def roles(ctx, member: discord.Member = None):
     """Affiche les rôles d'un membre (ou soi-même)."""
@@ -485,6 +563,7 @@ class TicketOpenView(discord.ui.View):
         await log_action(guild, "🎫 Ticket ouvert", interaction.user, f"Salon : {channel.name}")
 
 
+@has_authorized_role()
 @bot.command(name="ticket-setup")
 @commands.has_permissions(administrator=True)
 async def ticket_setup(ctx, category: discord.CategoryChannel = None, support_role: discord.Role = None):
@@ -508,6 +587,7 @@ async def ticket_setup(ctx, category: discord.CategoryChannel = None, support_ro
     await ctx.message.delete()
 
 
+@has_authorized_role()
 @bot.command(name="add-to-ticket")
 @commands.has_permissions(manage_channels=True)
 async def add_to_ticket(ctx, member: discord.Member):
@@ -522,6 +602,7 @@ async def add_to_ticket(ctx, member: discord.Member):
 #  CONFIGURATION AUTO-MOD & LOGS
 # ════════════════════════════════════════════════════════════════════════════
 
+@has_authorized_role()
 @bot.command(name="setlog")
 @commands.has_permissions(administrator=True)
 async def setlog(ctx, channel: discord.TextChannel):
@@ -530,6 +611,7 @@ async def setlog(ctx, channel: discord.TextChannel):
     await ctx.send(embed=success_embed(f"✅ Salon de logs défini sur {channel.mention}."))
 
 
+@has_authorized_role()
 @bot.command(name="automod")
 @commands.has_permissions(administrator=True)
 async def automod_toggle(ctx, feature: str, state: str):
@@ -548,6 +630,7 @@ async def automod_toggle(ctx, feature: str, state: str):
     await ctx.send(embed=success_embed(f"Auto-mod `{feature}` {status}."))
 
 
+@has_authorized_role()
 @bot.command(name="antilink-bypass")
 @commands.has_permissions(administrator=True)
 async def antilink_bypass(ctx, role: discord.Role):
@@ -560,6 +643,7 @@ async def antilink_bypass(ctx, role: discord.Role):
 #  COMMANDES UTILITAIRES
 # ════════════════════════════════════════════════════════════════════════════
 
+@has_authorized_role()
 @bot.command(name="userinfo")
 async def userinfo(ctx, member: discord.Member = None):
     """Affiche les infos d'un membre."""
@@ -576,6 +660,7 @@ async def userinfo(ctx, member: discord.Member = None):
     await ctx.send(embed=e)
 
 
+@has_authorized_role()
 @bot.command(name="serverinfo")
 async def serverinfo(ctx):
     """Affiche les infos du serveur."""
@@ -593,6 +678,7 @@ async def serverinfo(ctx):
     await ctx.send(embed=e)
 
 
+@has_authorized_role()
 @bot.command(name="ping")
 async def ping(ctx):
     """Affiche la latence du bot."""
@@ -604,6 +690,7 @@ async def ping(ctx):
 #  AIDE
 # ════════════════════════════════════════════════════════════════════════════
 
+@has_authorized_role()
 @bot.command(name="help")
 async def help_cmd(ctx):
     e = discord.Embed(title="📖 Commandes du bot", color=0x5865F2)
@@ -658,3 +745,49 @@ async def help_cmd(ctx):
 
 if __name__ == "__main__":
     bot.run(BOT_TOKEN)
+
+
+# ════════════════════════════════════════════════════════════════════════════
+#  GESTION DES UTILISATEURS AUTORISÉS
+# ════════════════════════════════════════════════════════════════════════════
+
+@has_authorized_role()
+@bot.command(name="adduser")
+@commands.has_permissions(administrator=True)
+async def adduser(ctx, member: discord.Member):
+    """Autorise un utilisateur spécifique à utiliser le bot."""
+    if is_user_authorized(ctx.guild.id, member.id):
+        return await ctx.send(embed=error_embed(f"❌ {member.mention} est déjà autorisé."))
+    add_authorized_user(ctx.guild.id, member.id)
+    await ctx.send(embed=success_embed(f"✅ {member.mention} peut maintenant utiliser le bot."))
+    await log_action(ctx.guild, "✅ Utilisateur autorisé", member, "Ajouté manuellement", ctx.author)
+
+
+@has_authorized_role()
+@bot.command(name="removeuser")
+@commands.has_permissions(administrator=True)
+async def removeuser(ctx, member: discord.Member):
+    """Retire l'autorisation d'un utilisateur spécifique."""
+    if not is_user_authorized(ctx.guild.id, member.id):
+        return await ctx.send(embed=error_embed(f"❌ {member.mention} n'est pas dans la liste manuelle."))
+    remove_authorized_user(ctx.guild.id, member.id)
+    await ctx.send(embed=success_embed(f"✅ {member.mention} a été retiré de la liste."))
+    await log_action(ctx.guild, "❌ Utilisateur retiré", member, "Retiré manuellement", ctx.author)
+
+
+@has_authorized_role()
+@bot.command(name="listusers")
+@commands.has_permissions(administrator=True)
+async def listusers(ctx):
+    """Affiche la liste des utilisateurs autorisés manuellement."""
+    uids = authorized_users.get(str(ctx.guild.id), [])
+    if not uids:
+        return await ctx.send(embed=info_embed("👥 Utilisateurs autorisés", "Aucun utilisateur ajouté manuellement."))
+    members = []
+    for uid in uids:
+        member = ctx.guild.get_member(int(uid))
+        members.append(f"• {member.mention} (`{uid}`)" if member else f"• ID inconnu (`{uid}`)")
+    await ctx.send(embed=info_embed(
+        f"👥 Utilisateurs autorisés manuellement ({len(uids)})",
+        "\n".join(members)
+    ))
