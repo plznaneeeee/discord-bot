@@ -1,9 +1,4 @@
-import discord
-from discord.ext import commands, tasks
-import asyncio
-import re
-from datetime import datetime, timedelta
-import json
+
 import os
 
 # ─── Configuration ───────────────────────────────────────────────────────────
