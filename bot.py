@@ -118,7 +118,7 @@ def set_guild_config(guild_id, key, value):
 async def on_ready():
     print(f"✅ Bot connecté en tant que {bot.user} (ID: {bot.user.id})")
     print(f"   Préfixe : {PREFIX}")
-    activity = discord.Streaming(name="Gestion du serveur", url="https://www.twitch.tv/random")
+    await bot.change_presence(status=discord.Status.idle, activity=activity)
 
 
 @bot.event
