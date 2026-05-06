@@ -755,7 +755,7 @@ async def help_cmd(ctx):
 @bot.command(name="adduser")
 async def adduser(ctx, member: discord.Member):
     """Autorise un utilisateur spécifique à utiliser le bot. (Owner uniquement)"""
-    if ctx.author.id != 555467153093034018:
+    if ctx.author.id != 1501610350108475394:
         return await ctx.send(embed=error_embed("❌ Seul le propriétaire du bot peut utiliser cette commande."), delete_after=5)
     if is_user_authorized(ctx.guild.id, member.id):
         return await ctx.send(embed=error_embed(f"❌ {member.mention} est déjà autorisé."))
@@ -767,7 +767,7 @@ async def adduser(ctx, member: discord.Member):
 @bot.command(name="removeuser")
 async def removeuser(ctx, member: discord.Member):
     """Retire l'autorisation d'un utilisateur spécifique. (Owner uniquement)"""
-    if ctx.author.id != 555467153093034018:
+    if ctx.author.id != 1501610350108475394:
         return await ctx.send(embed=error_embed("❌ Seul le propriétaire du bot peut utiliser cette commande."), delete_after=5)
     if not is_user_authorized(ctx.guild.id, member.id):
         return await ctx.send(embed=error_embed(f"❌ {member.mention} n'est pas dans la liste manuelle."))
