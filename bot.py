@@ -779,7 +779,7 @@ async def removeuser(ctx, member: discord.Member):
 @bot.command(name="listusers")
 async def listusers(ctx):
     """Affiche la liste des utilisateurs autorisés manuellement. (Owner uniquement)"""
-    if ctx.author.id != 555467153093034018:
+    if ctx.author.id != 1501610350108475394:
         return await ctx.send(embed=error_embed("❌ Seul le propriétaire du bot peut utiliser cette commande."), delete_after=5)
     uids = authorized_users.get(str(ctx.guild.id), [])
     if not uids:
